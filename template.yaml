@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  WebOCR
+
+  Sample SAM Template for WebOCR
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Tags:
+      ApplicationOCR: Serverless API + lambda OCR
+
+Resources:
+
+  TesseractLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      Description: OCR tesseract binarys
+      ContentUri: ./tesseract_layer/layer/
+      CompatibleRuntimes:
+        - python3.6
+
+  ServerlessHttpApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Description: Basic AWS Api Gateway to lead with OCR requisitions
+      StageName: Prod
+      Auth:
+        ApiKeyRequired: true # sets for all methods
+      Cors:
+        AllowMethods: "'OPTIONS,POST'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,X-Amz-Security-Token,Authorization,X-Api-Key,X-Requested-With,Accept,Access-Control-Allow-Methods,Access-Control-Allow-Origin,Access-Control-Allow-Headers'"
+        AllowOrigin: "'*'"
+        MaxAge: "'3600'"
+      GatewayResponses:
+        DEFAULT_4xx:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,X-Amz-Security-Token,Authorization,X-Api-Key,X-Requested-With,Accept,Access-Control-Allow-Methods,Access-Control-Allow-Origin,Access-Control-Allow-Headers'"
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Methods: "'OPTIONS,POST'"
+        DEFAULT_5xx:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,X-Amz-Security-Token,Authorization,X-Api-Key,X-Requested-With,Accept,Access-Control-Allow-Methods,Access-Control-Allow-Origin,Access-Control-Allow-Headers'"
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Methods: "'OPTIONS,POST'"
+
+
+  ApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    DependsOn: [ ApiUsagePlan ]
+    Properties:
+      Name: !Join [ "", [ { "Ref": "AWS::StackName" }, "-apikey" ] ]
+      Description: "ORC API Key: Keep Secret"
+      Enabled: true
+      GenerateDistinctId: false
+      Value: "pNYzXzQyZK8iB47XUfwqj7d5EL0U4k7R7kOHbak4"
+      StageKeys:
+        - RestApiId: !Ref ServerlessHttpApi
+          StageName: Prod
+
+  ApiUsagePlan:
+    Type: "AWS::ApiGateway::UsagePlan"
+    DependsOn:
+      - ServerlessHttpApiProdStage
+    Properties:
+      ApiStages:
+        - ApiId: !Ref ServerlessHttpApi
+          Stage: Prod
+      Description: !Join [ " ", [ { "Ref": "AWS::StackName" }, "usage plan" ] ]
+      Quota:
+        Limit: 10000
+        Period: MONTH
+      Throttle:
+        BurstLimit: 200
+        RateLimit: 100
+      UsagePlanName: !Join [ "", [ { "Ref": "AWS::StackName" }, "-usage-plan" ] ]
+
+  ApiUsagePlanKey:
+    Type: "AWS::ApiGateway::UsagePlanKey"
+    DependsOn:
+      - ServerlessHttpApi
+    Properties:
+      KeyId: !Ref ApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref ApiUsagePlan
+
+  OCRFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      Description: OCR lambda handler
+      CodeUri: web_ocr/
+      Handler: app.lambda_handler
+      Layers:
+        - !Ref TesseractLayer
+      Runtime: python3.6
+      Environment:
+        Variables:
+          TESSDATA_PREFIX: /opt/data/tessdata
+          DYLD_LIBRARY_PATH: /opt/lib
+      Events:
+        PostOCR:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            RestApiId: !Ref ServerlessHttpApi
+            Path: /ocr/{proxy+}
+            Method: post
+            Auth:
+              ApiKeyRequired: true
+        OptionsOCR:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ServerlessHttpApi
+            Path: /ocr/{proxy+}
+            Method: options
+            Auth:
+              ApiKeyRequired: false
+
+
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  ServerlessHttpApi:
+    Description: "API Gateway endpoint URL for Prod stage for OCR function"
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/ocr/"
+#    !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/ocr/"
+  OCRFunction:
+    Description: "OCR Lambda Function ARN"
+    Value: !GetAtt OCRFunction.Arn
+  OCRFunctionIamRole:
+    Description: "Implicit IAM Role created for OCR function"
+    Value: !GetAtt OCRFunctionRole.Arn
