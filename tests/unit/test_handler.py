@@ -1,6 +1,6 @@
 import json
 import pytest
-from web_ocr import app
+from ocr import app
 
 
 @pytest.fixture()

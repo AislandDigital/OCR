@@ -1,10 +1,10 @@
-# WebOCR
+# OCR
 
 This project contains source code and supporting files for a serverless 
 application that you can deploy with the SAM CLI. It includes the following 
 files and folders.
 
-- web_ocr - Code for the application's Lambda function.
+- ocr - Code for the application's Lambda function.
 - events - Invocation events that you can use to invoke the function.
 - tests - Unit tests for the application code.
 - template.yaml - A template that defines the application's AWS resources.
@@ -120,6 +120,44 @@ response = requests.post(URL_ENDPOINT, json=data, headers=headers)
 text = eval(response.content.decode("utf-8")
 
 ```
+## Testing CORS capibility 
+
+To test if the CORS is enable open the file index.html in your favourite browser inside the folder test_cors.
+
+You will be faced with a blank screen and nothing else.
+
+Open the browser tools:
+
+Right-click > Inspect > Console.
+
+Open the JS file in a text editor (this is it in it’s totality):
+
+```bash
+const useOCR = (args) => {
+    let headers = new Headers();
+    headers.append("x-api-key", "Your Key");
+    headers.append('Access-Control-Allow-Origin', "*");
+
+    return fetch("YOUR ENDPOINT/proxy", {
+        method: 'POST',
+        headers: headers,
+        mode:"cors",
+        credentials: 'same-origin',
+        cache: 'no-cache',
+        body: JSON.stringify(args)
+      })
+      .then(response => response.json())
+      .then(result => result.message)
+      .then(result => console.log(result))
+}
+
+
+```
+Refresh the browser.
+
+This is an adptation of nick script. You can check the original source [njgibbon
+/
+nicks-cors-test](https://github.com/njgibbon/nicks-cors-test)
 
 ## Tests
 
@@ -128,7 +166,7 @@ text = eval(response.content.decode("utf-8")
 Build your application with the `sam build --use-container` command.
 
 ```bash
-WebOCR$ sam build --use-container
+OCR$ sam build --use-container
 ```
 
 The SAM CLI installs dependencies defined in `web_ocr/requirements.txt`, creates 
@@ -143,7 +181,7 @@ event source. Test events are included in the `events` folder in this project.
 Run functions locally and invoke them with the `sam local invoke` command.
 
 ```bash
-WebOCR$ sam local invoke OCRFunction --event events/lambda/event_image64.json
+OCR$ sam local invoke OCRFunction --event events/lambda/event_image64.json
 ```
 
 The SAM CLI can also emulate your application's API. Use the 
@@ -151,15 +189,8 @@ The SAM CLI can also emulate your application's API. Use the
 **_note: the run in the end does not make part of the actual path on the yaml file, but is needed to keep up with {proxy+} configuration. Take a look [here](https://github.com/aws/aws-sam-cli/issues/437#issuecomment-391897052) to know more about it._**
 
 ```bash
-WebOCR$ sam local start-api
-WebOCR$ curl -X POST -u "x-api-key":"API_KEY" -H "Content-Type: application/json" --data @./events/api/event.json http://localhost:3000/ocr/run
-```
-
-Solve problems with REDIS environment variables editing the [env.json](env.json) 
-and adding argument to the `start-api`.
-
-```bash
-WebOCR$ sam local start-api --env-vars env.json
+OCR$ sam local start-api
+OCR$ curl -X POST -u "x-api-key":"API_KEY" -H "Content-Type: application/json" --data @./events/api/event.json http://localhost:3000/ocr/run
 ```
 
 The SAM CLI reads the application template to determine the API's routes and the 
@@ -173,23 +204,6 @@ Events:
     Properties:
       Path: /ocr
       Method: post
-```
-
-Function has the hability to store predicted images on a cache, in this case, 
-the [Redis](https://redis.io/), in order to test it locally, an redis instance 
-must be running.
-
-Install it or running the docker container to start a redis instance. Remember 
-to change the `redis.conf` path to the absolute repository path.
-
-```bash
-root$ docker run -v path/to/repo/redis.conf:/usr/local/etc/redis/redis.conf -p 6379:6379 redis redis-server /usr/local/etc/redis/redis.conf
-```
-
-Monitor the Redis Caching with the [Redis-Monitor](https://redis.io/commands/monitor).
-
-```bash
-root$ redis-cli monitor
 ```
 
 ### Tests for development
@@ -207,16 +221,16 @@ your machine.
 First, create a virtual environments and install the dependencies
 
 ```bash
-WebOCR$ pip install -r web_ocr/requirements.txt
-WebOCR$ pip install -r web_ocr/dev-requirements.txt
-WebOCR$ pip install -r tests/requirements.txt
+OCR$ pip install -r web_ocr/requirements.txt
+OCR$ pip install -r web_ocr/dev-requirements.txt
+OCR$ pip install -r tests/requirements.txt
 ```
 
 To perform the unit tests you must install tesseracts-ocr in you local machine:
 
 ```bash
 # unit test
-WebOCR$ python -m pytest tests/unit -v
+OCR$ python -m pytest tests/unit -v
 ```
 
 ### Integration tests
@@ -227,7 +241,7 @@ To check if your api is running correctly on AWS type:
 # integration test, requiring deploying the stack first.
 # Create profile named default with your aws credentials using aws cli
 # Create the env variable AWS_SAM_STACK_NAME and AWS_DEFAULT_REGION, with the name of the stack we are testing
-WebOCR$ AWS_SAM_STACK_NAME=<stack-name> AWS_DEFAULT_REGION=<region> AWS_PROFILE=<profile> AWS_API_KEY=<api_key> python -m pytest tests/integration -v
+OCR$ AWS_SAM_STACK_NAME=<stack-name> AWS_DEFAULT_REGION=<region> AWS_PROFILE=<profile> AWS_API_KEY=<api_key> python -m pytest tests/integration -v
 ```
 
 ## Add a resource to your application
@@ -252,7 +266,7 @@ nifty features to help you quickly find the bug.
 deploy using SAM.
 
 ```bash
-WebOCR$ sam logs -n OCRFunction --stack-name WebOCR --tail
+OCR$ sam logs -n OCRFunction --stack-name OCR --tail
 ```
 
 You can find more information and examples about filtering Lambda function logs 
@@ -265,7 +279,7 @@ To delete the sample application that you created, use the AWS CLI. Assuming you
 used your project name for the stack name, you can run the following:
 
 ```bash
-aws cloudformation delete-stack --stack-name WebOCR --region region-name
+aws cloudformation delete-stack --stack-name OCR --region region-name
 ```
 
 ## Resources
@@ -287,7 +301,7 @@ If run into any message related with permission on `build.sh`, when running
 _make_ on `tesseract_layer/`, just run the command bellow.
 
 ```bash
-WebOCR/tesseract_layer$ chmod +x build.sh
+OCR/tesseract_layer$ chmod +x build.sh
 ```
 
 ### Environment Variables

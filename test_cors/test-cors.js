@@ -4,7 +4,7 @@ const useOCR = (args) => {
     headers.append("x-api-key", "pNYzXzQyZK8iB47XUfwqj7d5EL0U4k7R7kOHbak4");
     headers.append('Access-Control-Allow-Origin', "*");
 
-    return fetch("https://0ngrmhi5sg.execute-api.us-east-1.amazonaws.com/Prod/ocr/proxy", {
+    return fetch("https://f3zcf337a0.execute-api.us-east-1.amazonaws.com/Prod/ocr/proxy", {
         method: 'POST',
         headers: headers,
         mode:"cors",
