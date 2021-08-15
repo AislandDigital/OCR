@@ -58,7 +58,7 @@ Resources:
       Description: "ORC API Key: Keep Secret"
       Enabled: true
       GenerateDistinctId: false
-      Value: "pNYzXzQyZK8iB47XUfwqj7d5EL0U4k7R7kOHbak4"
+      Value: "YOUR KEY HERE"
       StageKeys:
         - RestApiId: !Ref ServerlessHttpApi
           StageName: Prod
